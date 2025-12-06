@@ -1,44 +1,30 @@
-/**
- * Unit tests for the action's main functionality, src/main.ts
- *
- * These should be run as if the action was called from a workflow.
- * Specifically, the inputs listed in `action.yml` should be set as environment
- * variables following the pattern `INPUT_<INPUT_NAME>`.
- */
-
 import * as core from '@actions/core';
-import * as main from '../src/main';
-
-// Mock the action's main function
-// const runMock = jest.spyOn(main, 'run');
-
-// Mock the GitHub Actions core library
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type { MockInstance } from 'vitest';
+import { run } from '../main';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-let debugMock: jest.SpiedFunction<typeof core.debug>;
-let errorMock: jest.SpiedFunction<typeof core.error>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let warnMock: jest.SpiedFunction<typeof core.error>;
-let getInputMock: jest.SpiedFunction<typeof core.getInput>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let setFailedMock: jest.SpiedFunction<typeof core.setFailed>;
-let setOutputMock: jest.SpiedFunction<typeof core.setOutput>;
+let debugMock: MockInstance<typeof core.debug>;
+let errorMock: MockInstance<typeof core.error>;
+let warnMock: MockInstance<typeof core.warning>;
+let getInputMock: MockInstance<typeof core.getInput>;
+let setFailedMock: MockInstance<typeof core.setFailed>;
+let setOutputMock: MockInstance<typeof core.setOutput>;
 
 describe('action', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    debugMock = jest.spyOn(core, 'debug').mockImplementation();
-    errorMock = jest.spyOn(core, 'error').mockImplementation();
-    warnMock = jest.spyOn(core, 'warning').mockImplementation();
-    getInputMock = jest.spyOn(core, 'getInput').mockImplementation();
-    setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation();
-    setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation();
+    debugMock = vi.spyOn(core, 'debug').mockImplementation(vi.fn());
+    errorMock = vi.spyOn(core, 'error').mockImplementation(vi.fn());
+    warnMock = vi.spyOn(core, 'warning').mockImplementation(vi.fn());
+    getInputMock = vi.spyOn(core, 'getInput').mockImplementation(vi.fn());
+    setFailedMock = vi.spyOn(core, 'setFailed').mockImplementation(vi.fn());
+    setOutputMock = vi.spyOn(core, 'setOutput').mockImplementation(vi.fn());
   });
 
   describe('fail to parse variables', () => {
     it('should end with error message if variables are not valid JSON, YAML or dotenv', async () => {
-      // Set the action's inputs as return values from core.getInput()
       getInputMock.mockImplementation(name => {
         switch (name) {
           case 'template':
@@ -50,7 +36,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(errorMock).toHaveBeenCalledWith('Unable ot parse variables as JSON or YAML');
       expect(setFailedMock).not.toHaveBeenCalled();
@@ -58,6 +44,26 @@ describe('action', () => {
   });
 
   const TEMPLATE = 'Hi, <%= it.name %>! You are <%= it.age %> years old.';
+
+  describe('render template without variables', () => {
+    it('should render template without variables', async () => {
+      // Set the action's inputs as return values from core.getInput()
+      getInputMock.mockImplementation(name => {
+        switch (name) {
+          case 'template':
+            return 'Hello sunshine!';
+          default:
+            return '';
+        }
+      });
+
+      await run();
+
+      expect(setOutputMock).toHaveBeenNthCalledWith(1, 'text', expect.stringMatching('Hello sunshine!'));
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(warnMock).toHaveBeenCalled();
+    });
+  });
 
   describe('render template with variables', () => {
     it('YAML variables', async () => {
@@ -76,7 +82,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(setOutputMock).toHaveBeenNthCalledWith(
         1,
@@ -100,7 +106,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(setOutputMock).toHaveBeenNthCalledWith(
         1,
@@ -124,7 +130,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(setOutputMock).toHaveBeenNthCalledWith(1, 'text', expect.stringMatching('Hi, Joe! You are 30 years old.'));
       expect(errorMock).not.toHaveBeenCalled();
@@ -144,7 +150,7 @@ describe('action', () => {
       }
     });
 
-    await main.run();
+    await run();
 
     expect(setOutputMock).toHaveBeenNthCalledWith(1, 'text', expect.stringMatching('Hi John!'));
     expect(errorMock).not.toHaveBeenCalled();
@@ -163,7 +169,7 @@ describe('action', () => {
       }
     });
 
-    await main.run();
+    await run();
 
     expect(setOutputMock).toHaveBeenCalledWith('text', './dummy_file.eta');
     expect(errorMock).not.toHaveBeenCalled();
@@ -182,7 +188,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(setOutputMock).toHaveBeenNthCalledWith(
         1,
@@ -205,7 +211,7 @@ describe('action', () => {
         }
       });
 
-      await main.run();
+      await run();
 
       expect(setOutputMock).toHaveBeenNthCalledWith(1, 'text', expect.stringMatching('The difference is 3 minutes'));
       expect(errorMock).not.toHaveBeenCalled();
